@@ -1,0 +1,37 @@
+# Datasets (large, not reproducible as git history -- see docs/environment.md for provenance)
+data/
+V2X-Sim-det-001/
+V2X-Sim-det-001.zip
+Dachcam_dataset.zip
+Normal-002.zip
+V2X-Seq-SPD-Example.zip
+V2X-Seq-TFD-Example.zip
+example-cooperative-vehicle-infrastructure.zip
+"MoonBlvd Detection-of-Traffic-Anomaly master dataset.zip"
+v1.0-mini.tgz
+
+# Phase 1/2 pipeline outputs (regeneratable from track_vehicles.py / score_risk.py)
+outputs/
+outputs_dad_full/
+Claude outputs/
+
+# Model checkpoints and training logs (large; see docs/environment.md for paths + provenance)
+logs/
+lowerbound/
+logs_speedtest/
+*.pth
+*.pt
+
+# Python environments
+stockade-env/
+.venv/
+__pycache__/
+*.pyc
+
+# Misc large/generated logs
+*.log
+v2xsim_extract.log
+
+# OS
+.DS_Store
+Thumbs.db
