@@ -7,7 +7,12 @@ import torch.nn.functional as F
 
 
 class FaFModule(object):
-    def __init__(self, model, teacher, config, optimizer, criterion, kd_flag):
+    def __init__(self, model, teacher, config, optimizer, criterion, kd_flag,
+                 lr_milestones=(50, 100, 150, 200), lr_gamma=0.5):
+        # lr_milestones/lr_gamma were hardcoded here originally -- exposed as
+        # optional args (default unchanged) to support short controlled
+        # LR-schedule experiments without duplicating this whole class.
+        # See PATCHES.md, patch 4.
         self.MGDA = config.MGDA
         if self.MGDA:
             self.encoder = model[0]
@@ -15,10 +20,10 @@ class FaFModule(object):
             self.optimizer_encoder = optimizer[0]
             self.optimizer_head = optimizer[1]
             self.scheduler_encoder = torch.optim.lr_scheduler.MultiStepLR(
-                self.optimizer_encoder, milestones=[50, 100, 150, 200], gamma=0.5
+                self.optimizer_encoder, milestones=list(lr_milestones), gamma=lr_gamma
             )
             self.scheduler_head = torch.optim.lr_scheduler.MultiStepLR(
-                self.optimizer_head, milestones=[50, 100, 150, 200], gamma=0.5
+                self.optimizer_head, milestones=list(lr_milestones), gamma=lr_gamma
             )
             self.MGDA = config.MGDA
         else:
@@ -30,7 +35,7 @@ class FaFModule(object):
                     v.requires_grad = False  # fix parameters
             self.optimizer = optimizer
             self.scheduler = torch.optim.lr_scheduler.MultiStepLR(
-                optimizer, milestones=[50, 100, 150, 200], gamma=0.5
+                optimizer, milestones=list(lr_milestones), gamma=lr_gamma
             )
         self.criterion = criterion  # {'cls_loss','loc_loss'}
 

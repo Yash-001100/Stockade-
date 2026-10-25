@@ -91,3 +91,25 @@ that same `logger=None` → `print()` behavior.
 **Caveat:** no other mmcv functionality is stubbed. This only works
 because the current eval path's only mmcv dependency is this one
 function.
+
+## Patch 4 — configurable LR schedule in `FaFModule`
+
+**File:** `reference_coperception/coperception/utils/CoDetModule.py`,
+`FaFModule.__init__`
+
+**Original behavior:** `MultiStepLR` milestones `[50, 100, 150, 200]` and
+`gamma=0.5` were hardcoded in three places inside `__init__` (the MGDA
+encoder/head schedulers and the main one), not exposed as constructor
+arguments or CLI flags anywhere upstream.
+
+**Why changed:** the original 100-epoch `lowerbound` run only ever
+reached the first of those four milestones, which left open the question
+of whether its epoch-33 plateau was genuine convergence or an artifact of
+the LR never decaying enough. Testing that requires a *different*,
+shorter schedule for a follow-up run (`finetune_fafnet_lr_experiment.py`)
+— not possible without exposing this.
+
+**Patch:** added optional `lr_milestones=(50, 100, 150, 200)` and
+`lr_gamma=0.5` parameters to `FaFModule.__init__`, defaulting to the
+original hardcoded values. Every existing caller (`train_codet.py`,
+`test_codet.py`) is unaffected since they don't pass these args.

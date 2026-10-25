@@ -45,8 +45,44 @@ def test_patch3_mmcv_print_log_stub():
     print("PASS: patch 3 (mmcv.print_log stub)")
 
 
+def test_patch4_configurable_lr_schedule():
+    import torch
+    from coperception.utils.CoDetModule import FaFModule
+
+    dummy_model = torch.nn.Linear(2, 2)
+    dummy_optimizer = torch.optim.Adam(dummy_model.parameters(), lr=0.001)
+
+    class DummyConfig:
+        MGDA = False
+        pred_len = 1
+        category_num = 2
+        box_code_size = 6
+        code_type = "faf"
+        loss_type = "faf_loss"
+        only_det = True
+
+    # Default args -> must reproduce the ORIGINAL hardcoded schedule exactly.
+    default_module = FaFModule(dummy_model, dummy_model, DummyConfig(), dummy_optimizer, {}, kd_flag=0)
+    assert default_module.scheduler.milestones == {50: 1, 100: 1, 150: 1, 200: 1}, (
+        f"default milestones changed unexpectedly: {default_module.scheduler.milestones}"
+    )
+    assert default_module.scheduler.gamma == 0.5
+
+    # Custom args -> must actually take effect.
+    custom_optimizer = torch.optim.Adam(dummy_model.parameters(), lr=0.0005)
+    custom_module = FaFModule(
+        dummy_model, dummy_model, DummyConfig(), custom_optimizer, {}, kd_flag=0,
+        lr_milestones=(15, 30), lr_gamma=0.5,
+    )
+    assert custom_module.scheduler.milestones == {15: 1, 30: 1}, (
+        f"custom milestones not applied: {custom_module.scheduler.milestones}"
+    )
+    print("PASS: patch 4 (configurable LR schedule)")
+
+
 if __name__ == "__main__":
     test_patch1_mapping_import_does_not_crash()
     test_patch2_nuscenes_box_stub()
     test_patch3_mmcv_print_log_stub()
+    test_patch4_configurable_lr_schedule()
     print("\nAll patch tests passed.")
