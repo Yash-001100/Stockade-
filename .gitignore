@@ -7,7 +7,7 @@ Normal-002.zip
 V2X-Seq-SPD-Example.zip
 V2X-Seq-TFD-Example.zip
 example-cooperative-vehicle-infrastructure.zip
-"MoonBlvd Detection-of-Traffic-Anomaly master dataset.zip"
+MoonBlvd Detection-of-Traffic-Anomaly master dataset.zip
 v1.0-mini.tgz
 
 # Phase 1/2 pipeline outputs (regeneratable from track_vehicles.py / score_risk.py)

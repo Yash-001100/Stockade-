@@ -1,5 +1,12 @@
 # Environment, checkpoint provenance, and exact commands behind every reported metric
 
+**Note:** the commands below were originally run with default output paths
+(`risk_dataset.csv` etc. at the project root). Those files have since been
+moved into `experiments/` as the preserved record of this run. Re-running
+the commands as documented will regenerate fresh copies at the root —
+diff or move them into `experiments/` under a new name if you want to
+keep both as distinct experiment records.
+
 ## Environment
 
 - Python 3.11.9, Windows-native venv at `stockade-env/` (NOT `.venv/` — that
