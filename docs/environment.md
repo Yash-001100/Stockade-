@@ -125,7 +125,79 @@ until model selection is complete).
 
 Per-agent (epoch 100, mAP@0.5): agent1 61.5%, agent2 63.5%, agent3 69.5%,
 agent4 64.4%, agent5 58.8% — agent 5 consistently weakest at both
-checkpoints; cause not yet diagnosed.
+checkpoints.
+
+### LR-schedule experiment (Experiment A)
+The epoch-100 run's scheduler (`MultiStepLR`, milestones=[50,100,150,200])
+was sized for 200 epochs and only ever passed one decay step by epoch 100 —
+tests whether the epoch-33 plateau was an LR artifact. Resumed from
+`logs/lowerbound/no_rsu/epoch_100.pth` (model weights only) with a fresh
+optimizer, Adam lr=0.0005, milestones=(15,30), gamma=0.5, 40 epochs, via
+`finetune_fafnet_lr_experiment.py` -> `logs_lr_experiment/`.
+
+| checkpoint | mAP@0.5 | mAP@0.7 |
+|---|---|---|
+| epoch 10 | 64.6% | 61.2% |
+| epoch 20 | 65.0% | 61.5% |
+| epoch 30 | 64.9% | 61.3% |
+| epoch 40 | 65.5% | 61.7% |
+
+Per-agent (epoch 40, mAP@0.5/mAP@0.7): agent1 62.7%/58.1%, agent2
+65.4%/62.5%, agent3 70.8%/66.9%, agent4 65.8%/61.9%, agent5 59.9%/55.9%.
+Modest but real gain over epoch 100 (64.1% -> 65.5% mAP@0.5) — the
+original schedule was undertrained for its own milestones, not fully
+converged. Agent5 remains weakest by a consistent ~5-10pp margin across
+every checkpoint and every experiment in this project.
+
+### Agent-5 diagnosis (`diagnose_agent5.py`)
+Ran directly on preprocessed ground truth (no model inference) across the
+full val split (1000 scene-frames/agent) and train split (8000/agent) to
+test two hypotheses: (a) agent5's scenes are structurally harder
+(farther/sparser objects), or (b) agent5 just has less real training
+data. Measured per agent: objects/frame, mean/median distance from ego,
+%objects >20m, occupied-area fraction, and `trans_matrices` orthonormality
+(coordinate-pipeline sanity check).
+
+Result: distance/density statistics are essentially identical across all
+5 agents once measured on the full dataset (an earlier small-sample run,
+max_samples=400, misleadingly suggested agent5 had farther/harder scenes
+— that didn't replicate at full scale). `trans_matrices` are clean
+(no orthonormality violations). The real driver is data scarcity: only
+21.2% of agent5's training scene-frames have real (non-placeholder)
+sensor data, vs. 48.8% for agent4 and ~100% for agents 1-3. Agent5 is a
+genuinely vehicle-sparse position in the V2X-Sim scenes, not a pipeline
+bug or an inherently harder viewpoint.
+
+### Agent-4/5 oversampling follow-up — negative result
+Hypothesis: if agent5's weakness is data scarcity, oversampling the
+scene-frames where it has real data (via `WeightedRandomSampler`, weights
+3.0x agent5-real / 1.5x agent4-real / 1.0x otherwise, built by
+`build_agent_sample_weights.py`) should let the model extract more signal
+per epoch. Resumed from the LR experiment's epoch 40 checkpoint, same LR
+(0.000125, no further decay — isolating the sampler as the only new
+variable), 20 epochs, via `train_fafnet_agent_reweight.py` ->
+`logs_agent_reweight/`.
+
+| agent | baseline (LR-exp ep.40) | reweight ep.10 | reweight ep.20 |
+|---|---|---|---|
+| agent1 | 62.7% / 58.1% | 62.9% / 58.2% | 62.8% / 58.0% |
+| agent2 | 65.4% / 62.5% | 65.4% / 62.6% | 65.2% / 62.5% |
+| agent3 | 70.8% / 66.9% | 70.8% / 66.9% | 70.7% / 66.8% |
+| agent4 | 65.8% / 61.9% | 65.8% / 62.0% | 65.6% / 61.8% |
+| agent5 | 59.9% / 55.9% | 59.9% / 56.0% | 59.6% / 55.9% |
+| avg | 65.5% / 61.7% | 65.6% / 61.8% | 65.4% / 61.6% |
+
+No improvement anywhere — every agent flat to within ~0.3pp, with a
+slight overall dip by epoch 20. Oversampling increases how often the
+model *revisits* the same ~1,696 unique real agent5 scenes per epoch; it
+doesn't add new unique data, and the model had already extracted what
+those scenes teach it by epoch 40. This reinforces the diagnosis above:
+agent5's ceiling is a genuine unique-data-volume limit, not a
+sampling-frequency problem. A real fix needs either more unique real
+agent5 data (not available in this dataset) or a model that lets agent5
+borrow signal from neighboring agents in the same scene — which is what
+cooperative fusion (DiscoNet) is designed to do, unlike `lowerbound`'s
+per-agent-isolated training.
 
 ### DiscoNet — blocked, not trained
 Smoke-tested only. `DiscoNet.forward()` with `kd_flag=0` returns
